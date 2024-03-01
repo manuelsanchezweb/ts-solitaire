@@ -1,17 +1,17 @@
+import { cardHeight, cardWidth } from './config'
 import './style.scss'
+import { Card, CardLocation, GameState } from './types'
 
-const gameEl = document.getElementById('js-solitaire')
-const dealPileEl = document.getElementById('js-deck-pile')
-const dealEl = document.getElementById('js-deck-deal')
-const finishContainerEl = document.getElementById('js-finish')
-const deskContainerEl = document.getElementById('js-board')
-const deckPileEl = document.getElementById('js-deck-pile')
-const resetEl = document.getElementById('js-reset')
-const spriteImg = document.getElementById('sprite')
+const gameEl = document.getElementById('js-solitaire') as HTMLElement
+const dealPileEl = document.getElementById('js-deck-pile') as HTMLElement
+const dealEl = document.getElementById('js-deck-deal') as HTMLElement
+const finishContainerEl = document.getElementById('js-finish') as HTMLElement
+const deskContainerEl = document.getElementById('js-board') as HTMLElement
+const deckPileEl = document.getElementById('js-deck-pile') as HTMLElement
+const resetEl = document.getElementById('js-reset') as HTMLElement
+const spriteImg = document.getElementById('sprite') as HTMLImageElement
 
-const cardWidth = 71
-const cardHeight = 96
-const state = {
+const state: GameState = {
   // clubs (♣), diamonds (♦), hearts (♥) and spades (♠)
   types: ['c', 'd', 'h', 's'],
   // 0 (black), 1 (red)
@@ -65,38 +65,89 @@ const state = {
   },
 }
 
-const getCard = (index) => state.cards[index]
+/**
+ * Retrieves a card object from the state.cards array by its index.
+ *
+ * @param index - The index of the card in the state.cards array.
+ * @returns The Card object at the specified index.
+ */
+const getCard = (index: number) => state.cards[index]
 
-const faceUp = (card) => {
-  state.cards[card].facingUp = true
+/**
+ * Turns a card face up, updating its state and visual appearance.
+ *
+ * @param index - The index of the card in the state.cards array to be turned face up.
+ */
+const faceUp = (index: number) => {
+  state.cards[index].facingUp = true
   requestAnimationFrame(() => {
-    state.cards[card].el.classList.add('card--front')
-    state.cards[card].el.classList.remove('card--back')
+    state.cards[index].el.classList.add('card--front')
+    state.cards[index].el.classList.remove('card--back')
   })
 }
 
-const faceDown = (card) => {
-  state.cards[card].facingUp = false
-  state.cards[card].el.classList.remove('card--front')
-  state.cards[card].el.classList.add('card--back')
+/**
+ * Turns a card face down, updating its state and visual appearance.
+ *
+ * @param index - The index of the card in the state.cards array to be turned face down.
+ */
+const faceDown = (index: number) => {
+  state.cards[index].facingUp = false
+  requestAnimationFrame(() => {
+    state.cards[index].el.classList.remove('card--front')
+    state.cards[index].el.classList.add('card--back')
+  })
 }
 
-const faceUpLastOnDesk = (index) => {
+/**
+ * Faces up the last card on a desk pile.
+ *
+ * @param index - The index of the desk pile in the state.desk array.
+ */
+const faceUpLastOnDesk = (index: number) => {
   const card = getLastOnDesk(index)
   if (card !== null) {
     faceUp(card)
   }
 }
 
-const appendToCard = (target, card) => {
+/**
+ * Appends a card element to another card's element as a child.
+ *
+ * @param target - The index of the target card in the state.cards array.
+ * @param card - The index of the card to be appended to the target card's element.
+ */
+const appendToCard = (target: number, card: number): void => {
   state.cards[target].el.appendChild(state.cards[card].el)
 }
 
-const appendToDesk = (desk, card) => {
-  state.desk[desk].el.appendChild(state.cards[card].el)
+/**
+ * Appends a card element to a desk's element as a child.
+ * Ensures that both elements exist before attempting to append.
+ *
+ * @param desk - The index of the desk in the state.desk array.
+ * @param card - The index of the card to be appended to the desk's element.
+ */
+const appendToDesk = (desk: number, card: number): void => {
+  const deskEl = state.desk[desk]?.el
+  const cardEl = state.cards[card]?.el
+
+  if (deskEl && cardEl) {
+    deskEl.appendChild(cardEl)
+  } else {
+    console.log(
+      `Attempted to append to a non-existent element: desk ${desk}, card ${card}`
+    )
+  }
 }
 
-const getLastOnDesk = (desk) => {
+/**
+ * Retrieves the last card index on a specific desk.
+ *
+ * @param desk - The index of the desk from which to get the last card.
+ * @returns The index of the last card on the specified desk, or null if the desk is empty.
+ */
+const getLastOnDesk = (desk: number): number | null => {
   const l = state.desk[desk].cards.length
   if (l > 0) {
     return state.desk[desk].cards[l - 1]
@@ -104,50 +155,79 @@ const getLastOnDesk = (desk) => {
   return null
 }
 
-const getLastOnPile = (pile, index) => {
-  const l = state[pile][index].cards.length
-  if (l > 0) {
-    const card = state[pile][index].cards[l - 1]
-    return state.cards[card]
+/**
+ * Retrieves the last card object from a specified pile.
+ *
+ * @param location - The location of the pile ('deal', 'finish', or potentially 'desk').
+ * @param index - The index of the sub-pile within the main pile, relevant for 'finish' and 'desk'.
+ *                For 'deal', it should be set to a value indicating which part of the deal to access ('pile' or 'deal').
+ * @returns The last Card object from the specified pile, or an empty object if the pile is empty.
+ */
+const getLastOnPile = (
+  location: 'deal' | 'finish' | 'desk',
+  index: number | 'pile' | 'deal'
+): Card | {} => {
+  // Handling the 'deal' location differently because it doesn't use numeric indexing in the same way as 'finish' or 'desk'.
+  if (location === 'deal') {
+    // For 'deal', 'index' is expected to be either 'pile' or 'deal', not a number.
+    const dealSubPile =
+      index === 'pile' ? state.deal.pile.cards : state.deal.deal.cards
+    if (dealSubPile.length > 0) {
+      const cardIndex = dealSubPile[dealSubPile.length - 1]
+      return state.cards[cardIndex]
+    }
+  } else {
+    // 'finish' and 'desk' both use numeric indexing.
+    const pileCards = state[location][index as number].cards
+    if (pileCards.length > 0) {
+      const cardIndex = pileCards[pileCards.length - 1]
+      return state.cards[cardIndex]
+    }
   }
+
   return {}
 }
 
-const getCardLocation = (card) => {
+/**
+ * Finds the location of a card within the game state.
+ *
+ * @param card - The index of the card whose location is to be determined.
+ * @returns An object describing the card's location, including the type of pile ('desk', 'finish', 'deal'),
+ * the pile index, and the card's index within that pile.
+ */
+const getCardLocation = (card: number): CardLocation | undefined => {
+  // Check in desk
   for (let i = 0; i < 7; i++) {
     const index = state.desk[i].cards.indexOf(card)
     if (index > -1) {
-      return {
-        location: 'desk',
-        pile: i,
-        index: index,
-      }
+      return { location: 'desk', pile: i, index }
     }
   }
 
+  // Check in finish
   for (let i = 0; i < 4; i++) {
     const index = state.finish[i].cards.indexOf(card)
     if (index > -1) {
-      return {
-        location: 'finish',
-        pile: i,
-        index: index,
-      }
+      return { location: 'finish', pile: i, index }
     }
   }
 
-  for (let i of ['deal', 'pile']) {
-    const index = state.deal[i].cards.indexOf(card)
-    if (index > -1) {
-      return {
-        location: 'deal',
-        pile: i,
-        index: index,
-      }
-    }
+  // Check in deal.pile
+  const indexInDealPile = state.deal.pile.cards.indexOf(card)
+  if (indexInDealPile > -1) {
+    // Explicitly specifying 'pile' as a string for the pile property
+    return { location: 'deal', pile: 'pile', index: indexInDealPile }
   }
-  // debugger;
-  // 'Card not found!';
+
+  // Check in deal.deal
+  const indexInDealDeal = state.deal.deal.cards.indexOf(card)
+  if (indexInDealDeal > -1) {
+    // Explicitly specifying 'deal' as a string for the pile property
+    return { location: 'deal', pile: 'deal', index: indexInDealDeal }
+  }
+
+  // Card not found
+  return undefined
 }
 
 const getSubCards = (card) => {
@@ -255,7 +335,7 @@ function resetGame() {
   })
 }
 
-const handleClick = (index) => (event) => {
+const handleClick = (index: number) => (event: MouseEvent) => {
   event.stopPropagation()
   const { el, facingUp } = getCard(index)
 
@@ -317,14 +397,14 @@ function restartDeal() {
   }
 }
 
-function getMousePosition(event) {
+function getMousePosition(event: MouseEvent) {
   return {
     x: event.pageX,
     y: event.pageY,
   }
 }
 
-const handleMove = (event) => {
+const handleMove = (event: MouseEvent) => {
   if (state.moving.capture) {
     const el = state.moving.element
     const { x, y } = getMousePosition(event)
@@ -334,7 +414,7 @@ const handleMove = (event) => {
   }
 }
 
-const startMovingPosition = (event) => {
+const startMovingPosition = (event: MouseEvent) => {
   const el = state.moving.element
   const { x, y } = getMousePosition(event)
   const { top, left } = el.getBoundingClientRect()
@@ -349,8 +429,8 @@ const startMovingPosition = (event) => {
   el.style.top = `${y - state.moving.offset.y - 5}px`
 }
 
-let moving
-const captureMove = (index) => (event) => {
+let moving: any
+const captureMove = (index: number) => (event: MouseEvent) => {
   event.preventDefault()
   event.stopPropagation()
   const { el, facingUp } = getCard(index)
@@ -394,7 +474,7 @@ const captureMove = (index) => (event) => {
   }
 }
 
-const dropCard = (x, y) => {
+const dropCard = (x: number, y: number) => {
   for (const destination of state.moving.destinations) {
     const { width, height, left, top } = destination.offset
     destination.el.classList.remove('finish-dest')
@@ -417,8 +497,8 @@ const dropCard = (x, y) => {
   }
 }
 
-let release
-const releaseMove = (event) => {
+let release: any
+const releaseMove = (event: MouseEvent) => {
   clearTimeout(moving)
   clearTimeout(release)
   if (state.moving.capture) {
@@ -426,6 +506,8 @@ const releaseMove = (event) => {
       const { x, y } = getMousePosition(event)
       requestAnimationFrame(() => {
         dropCard(x, y)
+
+        if (state.moving.element === null) return
 
         state.moving.element.classList.remove('card--moving')
         state.moving.element.style.left = ''
@@ -438,7 +520,7 @@ const releaseMove = (event) => {
   }
 }
 
-const getAvailableDestinations = (index, first = false) => {
+const getAvailableDestinations = (index: number, first = false) => {
   const { type, number } = getCard(index)
   const destinations = []
   if (number === 1) {
@@ -529,25 +611,36 @@ const gameFinish = () => {
   win(width, height, left, top)
 }
 
+declare global {
+  interface Window {
+    win: () => void
+  }
+}
+
 window.win = () => {
   const { width, height, left, top } = gameEl.getBoundingClientRect()
   win(width, height, left, top)
 }
 
-const win = (canvasWidth, canvasHeight, canvasLeft, canvasTop) => {
-  const image = document.createElement('img')
+const win = (
+  canvasWidth: number,
+  canvasHeight: number,
+  canvasLeft: number,
+  canvasTop: number
+) => {
+  const image = document.createElement('img') as HTMLImageElement
   image.src = spriteImg.src
-  const canvas = document.createElement('canvas')
+  const canvas = document.createElement('canvas') as HTMLCanvasElement
   canvas.style.position = 'absolute'
   canvas.width = canvasWidth
   canvas.height = canvasHeight
   gameEl.appendChild(canvas)
 
-  const context = canvas.getContext('2d')
+  const context = canvas.getContext('2d') as CanvasRenderingContext2D
   let card = 52
-  const particles = []
+  const particles: any[] = []
 
-  const drawCard = (x, y, spriteX, spriteY) => {
+  const drawCard = (x: number, y: number, spriteX: number, spriteY: number) => {
     context.drawImage(
       image,
       spriteX,
@@ -561,7 +654,14 @@ const win = (canvasWidth, canvasHeight, canvasLeft, canvasTop) => {
     )
   }
 
-  const Particle = function (id, x, y, sx, sy) {
+  const Particle = function (
+    this: any,
+    id: number,
+    x: number,
+    y: number,
+    sx: number,
+    sy: number
+  ) {
     if (sx === 0) sx = 2
     const spriteX = (id % 4) * cardWidth
     const spriteY = Math.floor(id / 4) * cardHeight
@@ -592,7 +692,7 @@ const win = (canvasWidth, canvasHeight, canvasLeft, canvasTop) => {
     }
   }
 
-  const throwCard = (x, y) => {
+  const throwCard = (x: number, y: number) => {
     if (card < 1) return
     card--
     const particle = new Particle(
@@ -607,7 +707,7 @@ const win = (canvasWidth, canvasHeight, canvasLeft, canvasTop) => {
     particles.push(particle)
   }
 
-  let throwInterval = []
+  let throwInterval: any[] = []
   for (let i = 0; i < 4; i++) {
     const { left, top } = state.finish[i].el.getBoundingClientRect()
     throwInterval[i] = setInterval(function () {
@@ -625,13 +725,13 @@ const win = (canvasWidth, canvasHeight, canvasLeft, canvasTop) => {
     // clearInterval(updateInterval)
   }, 1000 / 60)
 
-  function removeAnimation(event) {
+  function removeAnimation(event: MouseEvent) {
     event.preventDefault()
     clearInterval(updateInterval)
     for (let i = 0; i < 4; i++) {
       clearInterval(throwInterval[i])
     }
-    canvas.parentNode.removeChild(canvas)
+    if (canvas.parentNode) canvas.parentNode.removeChild(canvas)
     document.removeEventListener('click', removeAnimation)
   }
   document.addEventListener('click', removeAnimation, false)
@@ -689,4 +789,4 @@ function initSolitaire() {
   resetGame()
 }
 
-window.onload = initSolitaire
+document.addEventListener('DOMContentLoaded', initSolitaire)
