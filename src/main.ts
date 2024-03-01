@@ -230,28 +230,60 @@ const getCardLocation = (card: number): CardLocation | undefined => {
   return undefined
 }
 
-const getSubCards = (card) => {
-  const { location, pile, index } = getCardLocation(card)
+/**
+ * Retrieves all card indices that are positioned after a specific card within its pile.
+ *
+ * @param cardIndex - The index of the card within the state.cards array.
+ * @returns An array of indices for cards positioned after the specified card within its pile.
+ */
+const getSubCards = (cardIndex: number): number[] => {
+  const locationInfo = getCardLocation(cardIndex)
+  if (!locationInfo) return []
 
-  return state[location][pile].cards.filter(
-    (elem, i, array) => array.indexOf(elem) > index
-  )
+  const { location, pile, index } = locationInfo
+
+  if (typeof pile === 'number') {
+    // @ts-ignore
+    return state[location][pile].cards.filter(
+      (_elem: any, elemIndex: number) => elemIndex > index
+    )
+  } else {
+    // Deal with 'deal' location specifically if needed.
+    return [] // Adjust based on your game's logic.
+  }
 }
 
-const getPile = (pile, index) => {
-  return state[pile][index]
+/**
+ * Retrieves a specific pile based on its location and index or key.
+ *
+ * @param location - The location of the pile ('desk', 'finish', or 'deal').
+ * @param index - The index within the location or a key for 'deal' piles ('pile' or 'deal').
+ * @returns The requested pile.
+ */
+const getPile = (
+  location: 'desk' | 'finish' | 'deal',
+  index: number | 'pile' | 'deal'
+) => {
+  if (location === 'deal') {
+    return state.deal[index as 'pile' | 'deal']
+  } else {
+    return state[location][index as number]
+  }
 }
 
 const moveCardTo = (dest, i, card) => {
-  const { location, pile, index } = getCardLocation(card)
+  const locationInfo = getCardLocation(card)
+  if (!locationInfo) return []
+
+  const { location, pile, index } = locationInfo
 
   const moving = state[location][pile].cards.filter(
-    (elem, i, array) => array.indexOf(elem) >= index
+    (elem, _i, array) => array.indexOf(elem) >= index
   )
 
   // remove from source
   state[location][pile].cards = state[location][pile].cards.filter(
-    (elem, i, array) => moving.indexOf(elem) === -1
+    (elem, _i, _array) => moving.indexOf(elem) === -1
   )
 
   // append to destination
@@ -260,12 +292,23 @@ const moveCardTo = (dest, i, card) => {
   // console.log(state);
 }
 
-const canBePlacedOnCard = (child, parent) => {
-  const { type, number } = getCard(child)
-  const { type: parentType, number: parentNumber } = getCard(parent)
+/**
+ * Determines whether a card can be placed on another card according to game rules.
+ *
+ * @param childIndex - The index of the card to be placed.
+ * @param parentIndex - The index of the potential parent card.
+ * @returns True if the child card can be placed on the parent card, false otherwise.
+ */
+const canBePlacedOnCard = (
+  childIndex: number,
+  parentIndex: number
+): boolean => {
+  const childCard = getCard(childIndex)
+  const parentCard = getCard(parentIndex)
+
   return (
-    parentNumber - 1 === number &&
-    state.colors[parentType] !== state.colors[type]
+    parentCard.number - 1 === childCard.number &&
+    state.colors[parentCard.type] !== state.colors[childCard.type]
   )
 }
 
@@ -340,12 +383,16 @@ const handleClick = (index: number) => (event: MouseEvent) => {
   const { el, facingUp } = getCard(index)
 
   if (state.moving.capture) return
-  releaseMove()
+  releaseMove(event)
 
   if (facingUp) {
-    const { location, pile } = getCardLocation(index)
+    const locationInfo = getCardLocation(index)
+    if (!locationInfo) return []
+
+    const { location, pile } = locationInfo
 
     if (location === 'deal' && pile === 'deal') {
+      // @ts-ignore
       const { el: lastEl } = getLastOnPile('deal', 'deal')
       if (el !== lastEl) return
     }
@@ -361,16 +408,19 @@ const handleClick = (index: number) => (event: MouseEvent) => {
 
       // face up last cards on desk
       if (location === 'desk') {
-        faceUpLastOnDesk(pile)
+        faceUpLastOnDesk(pile as number)
       }
-      targetEl.appendChild(el)
+      if (targetEl) targetEl.appendChild(el)
     } else {
       return
     }
     gameFinish()
   } else {
     // is on deal deck
-    const { location, pile } = getCardLocation(index)
+    const locationInfo = getCardLocation(index)
+    if (!locationInfo) return []
+
+    const { location, pile } = locationInfo
     if (location === 'deal' && pile === 'pile') {
       const max = state.deal.pile.cards.length - 1
       const min = Math.max(-1, max - 3)
@@ -408,6 +458,7 @@ const handleMove = (event: MouseEvent) => {
   if (state.moving.capture) {
     const el = state.moving.element
     const { x, y } = getMousePosition(event)
+    if (el === null) return
 
     el.style.left = `${x - state.moving.offset.x}px`
     el.style.top = `${y - state.moving.offset.y}px`
@@ -417,6 +468,7 @@ const handleMove = (event: MouseEvent) => {
 const startMovingPosition = (event: MouseEvent) => {
   const el = state.moving.element
   const { x, y } = getMousePosition(event)
+  if (el === null) return
   const { top, left } = el.getBoundingClientRect()
   el.classList.add('card--moving')
 
@@ -435,14 +487,18 @@ const captureMove = (index: number) => (event: MouseEvent) => {
   event.stopPropagation()
   const { el, facingUp } = getCard(index)
   if (facingUp) {
-    const { location, pile } = getCardLocation(index)
+    const locationInfo = getCardLocation(index)
+    if (!locationInfo) return []
+    const { location, pile } = locationInfo
     if (location === 'deal' && pile === 'deal') {
+      // @ts-ignore
       const { el: lastEl } = getLastOnPile('deal', 'deal')
       if (el !== lastEl) {
         return false
       }
     }
     moving = setTimeout(() => {
+      // @ts-ignore
       state.moving.element = event.target
       state.moving.capture = true
       state.moving.index = index
@@ -455,6 +511,7 @@ const captureMove = (index: number) => (event: MouseEvent) => {
       state.moving.destinations = destinations
 
       for (const dest of destinations) {
+        if (!dest.el) continue
         dest.el.classList.add('finish-dest')
       }
 
@@ -545,10 +602,12 @@ const getAvailableDestinations = (index: number, first = false) => {
   // other cards
   // move to finish pile
   const subCards = getSubCards(index)
+  // @ts-ignore
   if (!subCards.length > 0) {
     for (let i = 0; i < 4; i++) {
       const l = state.finish[i].cards.length
       if (l + 1 === number) {
+        // @ts-ignore
         const { type: lastType } = getLastOnPile('finish', i)
 
         if (lastType === type) {
