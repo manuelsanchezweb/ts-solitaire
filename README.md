@@ -23,3 +23,9 @@ Deploy to be announced
 ## Tutorial & Motivation
 
 I had already seen the [repo of rjanjic](https://github.com/rjanjic/js-solitaire) for a long time and wanted to find the time to go through his code to understand the whole logic he created. At the end of the day, Solitaire is one of the most searched games on the net and wanted to understand how it works.
+
+## To Do
+
+- [ ] Create types properly
+- [ ] Create config file
+- [ ] Create helper functions and optional tests
