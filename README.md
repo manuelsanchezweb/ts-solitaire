@@ -8,18 +8,17 @@ The original version is from [rjantic](https://github.com/rjanjic/js-solitaire).
 I just adapted to use more modern code and TS, but all the codos should go to rjantic.
 I learnt a lot through all the code!
 
-Deploy [here](https://hangman-ts-gamma.vercel.app/)
+<!-- Deploy [here](https://hangman-ts-gamma.vercel.app/) -->
+
+Deploy to be announced
 
 </div>
 
 <div align="center">
 
-![React Badge](https://img.shields.io/badge/-ReactJs-61DAFB?logo=react&logoColor=white&style=for-the-badge)
 ![Vercel Badge](https://img.shields.io/badge/Vercel-black?style=flat&logo=Vercel&logoColor=white)
 
 </div>
-
-This is an attempt to do a cool version of Hangman that will have a different word per day
 
 ## Tutorial & Motivation
 
